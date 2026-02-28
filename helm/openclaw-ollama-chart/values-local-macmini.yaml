@@ -1,0 +1,115 @@
+replicaCount: 1
+
+nameOverride: ""
+fullnameOverride: ""
+
+openclaw:
+  image:
+    repository: ghcr.io/openclaw/openclaw
+    tag: latest
+    pullPolicy: IfNotPresent   # local dev: avoid pulling every restart
+  containerPort: 18789
+  command: ["node"]
+  args:
+    - "openclaw.mjs"
+    - "gateway"
+    - "--allow-unconfigured"
+    - "--bind=lan"
+  env:
+    OPENAI_BASE_URL: "http://localhost:11434/v1"
+    OPENAI_API_KEY: "ollama"
+    OPENAI_MODEL: "qwen2.5:7b"
+    GATEWAY_TOKEN: "localdevtoken"
+    OLLAMA_API_KEY: "ollama-local"
+
+    OTEL_EXPORTER_OTLP_ENDPOINT: "http://localhost:4318"
+    OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf"
+    OTEL_SERVICE_NAME: "openclaw-gateway"
+
+  # If your templates support resources for openclaw, use these:
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "2"
+      memory: "2Gi"
+
+ollama:
+  image:
+    repository: ollama/ollama
+    tag: latest
+    pullPolicy: IfNotPresent
+  containerPort: 11434
+  modelsPath: "/root/.ollama"
+
+  # If your templates support resources for ollama, use these:
+  resources:
+    requests:
+      cpu: "2"
+      memory: "6Gi"
+    limits:
+      cpu: "6"
+      memory: "10Gi"
+
+# Local: I'd disable prepull to keep deploys fast and avoid chewing disk unexpectedly.
+# Pull manually when needed: `ollama pull qwen2.5:7b`
+prepull:
+  enabled: false
+  models: []
+
+service:
+  type: NodePort
+  port: 18789
+  nodePort: 31889
+
+# Storage: on a 256GB SSD, 80Gi can be okay but may crowd your system depending on what else is on disk.
+# 60Gi is safer; bump later if needed.
+persistence:
+  enabled: true
+  existingClaim: ""
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: "local-path"
+  size: 80Gi
+
+openclawConfigPersistence:
+  enabled: true
+  existingClaim: ""
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: "local-path"
+  size: 5Gi
+  mountPath: /home/node/.openclaw
+
+# Keep enabled if you want it; cap the collector so it can't steal memory.
+observability:
+  enabled: true
+
+  otel:
+    endpoint: "http://localhost:4318"
+    protocol: "http/protobuf"
+    serviceName: "openclaw-gateway"
+    traces: true
+    metrics: true
+    logs: false
+    sampleRate: 1
+    flushIntervalMs: 10000
+
+  collector:
+    image: "otel/opentelemetry-collector:0.95.0"
+    otlpHttpPort: 4318
+    prometheusPort: 9464
+    # If your templates support resources for otel-collector, use these:
+    resources:
+      requests:
+        cpu: "50m"
+        memory: "128Mi"
+      limits:
+        cpu: "500m"
+        memory: "512Mi"
+
+metrics:
+  enabled: true
+  path: /metrics
+  port: 9464

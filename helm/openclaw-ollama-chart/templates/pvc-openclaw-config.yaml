@@ -1,0 +1,17 @@
+{{- if and .Values.openclawConfigPersistence.enabled (not .Values.openclawConfigPersistence.existingClaim) }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "openclaw-ollama.fullname" . }}-openclaw-config
+  labels:
+    app: {{ include "openclaw-ollama.fullname" . }}
+spec:
+  accessModes:
+  {{- toYaml .Values.openclawConfigPersistence.accessModes | nindent 4 }}
+  resources:
+    requests:
+      storage: {{ .Values.openclawConfigPersistence.size | quote }}
+{{- if .Values.openclawConfigPersistence.storageClassName }}
+  storageClassName: {{ .Values.openclawConfigPersistence.storageClassName | quote }}
+{{- end }}
+{{- end }}

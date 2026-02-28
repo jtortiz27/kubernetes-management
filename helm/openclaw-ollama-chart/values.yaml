@@ -1,0 +1,91 @@
+replicaCount: 1
+
+nameOverride: ""
+fullnameOverride: ""
+
+openclaw:
+  image:
+    repository: ghcr.io/openclaw/openclaw
+    tag: latest
+    pullPolicy: Always
+  containerPort: 18789
+  command: [ "node" ]
+  args:
+    - "openclaw.mjs"
+    - "gateway"
+    - "--allow-unconfigured"
+    - "--bind=lan"
+  env:
+    OPENAI_BASE_URL: "http://localhost:11434/v1"
+    OPENAI_API_KEY: "ollama"
+    OPENAI_MODEL: "qwen2.5:7b"
+    GATEWAY_TOKEN: "localdevtoken"
+    OLLAMA_API_KEY: "ollama-local"
+
+    # OTEL exporter env overrides:
+    OTEL_EXPORTER_OTLP_ENDPOINT: "http://localhost:4318"
+    OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf"
+    OTEL_SERVICE_NAME: "openclaw-gateway"
+
+ollama:
+  image:
+    repository: ollama/ollama
+    tag: latest
+    pullPolicy: IfNotPresent
+  containerPort: 11434
+  modelsPath: "/root/.ollama"
+
+# Models to pre-pull at pod start
+prepull:
+  enabled: true
+  models:
+    - "qwen2.5:7b"
+
+service:
+  type: NodePort
+  port: 18789
+  nodePort: 31889
+
+# Storage for Ollama models:
+# - emptyDir is simplest (models disappear when pod is deleted)
+# - set enabled=true and provide a PVC name to persist
+persistence:
+  enabled: true
+  existingClaim: ""
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ""
+  size: 80Gi
+
+# NEW (OpenClaw config + token + UI settings)
+openclawConfigPersistence:
+  enabled: true
+  existingClaim: ""
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ""
+  size: 5Gi
+  mountPath: /home/node/.openclaw
+
+observability:
+  enabled: true
+
+  otel:
+    endpoint: "http://localhost:4318"
+    protocol: "http/protobuf"
+    serviceName: "openclaw-gateway"
+    traces: true
+    metrics: true
+    logs: false   # start false; logs can be noisy
+    sampleRate: 1
+    flushIntervalMs: 10000
+
+  collector:
+    image: "otel/opentelemetry-collector:0.95.0"
+    otlpHttpPort: 4318
+    prometheusPort: 9464
+
+metrics:
+  enabled: true
+  path: /metrics
+  port: 9464

@@ -1,0 +1,141 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "openclaw-ollama.fullname" . }}
+  labels:
+    app: {{ include "openclaw-ollama.fullname" . }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ include "openclaw-ollama.fullname" . }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "openclaw-ollama.fullname" . }}
+      {{- if .Values.metrics.enabled }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: {{ .Values.metrics.path | quote }}
+        prometheus.io/port: {{ .Values.metrics.port | quote }}
+      {{- end }}
+    spec:
+      volumes:
+        - name: ollama-data
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ default (printf "%s-ollama" (include "openclaw-ollama.fullname" .)) .Values.persistence.existingClaim }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+
+        - name: openclaw-config
+          {{- if .Values.openclawConfigPersistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ default (printf "%s-openclaw-config" (include "openclaw-ollama.fullname" .)) .Values.openclawConfigPersistence.existingClaim }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+
+        {{- if .Values.observability.enabled }}
+        - name: otel-config
+          configMap:
+            name: {{ include "openclaw-ollama.fullname" . }}-otel-config
+        {{- end }}
+
+      initContainers:
+        {{- if .Values.prepull.enabled }}
+        - name: ollama-prepull
+          image: "{{ .Values.ollama.image.repository }}:{{ .Values.ollama.image.tag }}"
+          imagePullPolicy: {{ .Values.ollama.image.pullPolicy }}
+          env:
+            - name: OLLAMA_MODELS
+              value: "{{ .Values.ollama.modelsPath }}"
+          volumeMounts:
+            - name: ollama-data
+              mountPath: "{{ .Values.ollama.modelsPath }}"
+          command: ["/bin/sh", "-lc"]
+          args:
+            - |
+              set -e
+              ollama serve >/tmp/ollama.log 2>&1 &
+              for i in $(seq 1 60); do
+                ollama list >/dev/null 2>&1 && break
+                sleep 1
+              done
+              {{- range .Values.prepull.models }}
+              ollama pull {{ . | quote }}
+              {{- end }}
+              pkill ollama || true
+        {{- end }}
+
+        - name: openclaw-config-seed
+          image: "{{ .Values.openclaw.image.repository }}:{{ .Values.openclaw.image.tag }}"
+          imagePullPolicy: {{ .Values.openclaw.image.pullPolicy }}
+          command: ["/bin/sh", "-lc"]
+          args:
+            - |
+              set -e
+              mkdir -p /home/node/.openclaw
+              if [ ! -f /home/node/.openclaw/openclaw.json ]; then
+                printf '%s\n' \
+                  '{' \
+                  '  "gateway": {' \
+                  '    "auth": { "token": "localdevtoken" },' \
+                  '    "controlUi": { "dangerouslyAllowHostHeaderOriginFallback": true }' \
+                  '  }' \
+                  '}' \
+                  > /home/node/.openclaw/openclaw.json
+              fi
+          volumeMounts:
+            - name: openclaw-config
+              mountPath: /home/node/.openclaw
+
+      containers:
+        - name: ollama
+          image: "{{ .Values.ollama.image.repository }}:{{ .Values.ollama.image.tag }}"
+          imagePullPolicy: {{ .Values.ollama.image.pullPolicy }}
+          env:
+            - name: OLLAMA_MODELS
+              value: "{{ .Values.ollama.modelsPath }}"
+          ports:
+            - name: ollama
+              containerPort: {{ .Values.ollama.containerPort }}
+          volumeMounts:
+            - name: ollama-data
+              mountPath: "{{ .Values.ollama.modelsPath }}"
+
+        - name: openclaw
+          image: "{{ .Values.openclaw.image.repository }}:{{ .Values.openclaw.image.tag }}"
+          imagePullPolicy: {{ .Values.openclaw.image.pullPolicy }}
+          {{- if .Values.openclaw.command }}
+          command: {{ toJson .Values.openclaw.command }}
+          {{- end }}
+          {{- if .Values.openclaw.args }}
+          args: {{ toJson .Values.openclaw.args }}
+          {{- end }}
+          env:
+            {{- range $k, $v := .Values.openclaw.env }}
+            - name: {{ $k }}
+              value: {{ $v | quote }}
+            {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.openclaw.containerPort }}
+          volumeMounts:
+            - name: openclaw-config
+              mountPath: {{ .Values.openclawConfigPersistence.mountPath | quote }}
+
+        {{- if .Values.observability.enabled }}
+        - name: otel-collector
+          image: {{ .Values.observability.collector.image | quote }}
+          args: ["--config=/etc/otel/otel-collector.yaml"]
+          ports:
+            - name: otlp-http
+              containerPort: {{ .Values.observability.collector.otlpHttpPort }}
+            - name: metrics
+              containerPort: {{ .Values.observability.collector.prometheusPort }}
+          volumeMounts:
+            - name: otel-config
+              mountPath: /etc/otel
+        {{- end }}

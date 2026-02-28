@@ -1,0 +1,27 @@
+{{- if .Values.observability.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "openclaw-ollama.fullname" . }}-otel-config
+data:
+  otel-collector.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          http:
+            endpoint: 0.0.0.0:{{ .Values.observability.collector.otlpHttpPort }}
+
+    processors:
+      batch: {}
+
+    exporters:
+      prometheus:
+        endpoint: 0.0.0.0:{{ .Values.observability.collector.prometheusPort }}
+
+    service:
+      pipelines:
+        metrics:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [prometheus]
+  {{- end }}
