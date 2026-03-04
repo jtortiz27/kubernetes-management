@@ -37,6 +37,9 @@ spec:
           emptyDir: {}
           {{- end }}
 
+        - name: openclaw-raw-stream
+          emptyDir: {}
+
         {{- if .Values.observability.enabled }}
         - name: otel-config
           configMap:
@@ -83,6 +86,18 @@ spec:
                   '  "gateway": {' \
                   '    "auth": { "token": "localdevtoken" },' \
                   '    "controlUi": { "dangerouslyAllowHostHeaderOriginFallback": true }' \
+                  '  },' \
+                  '  "agents": {' \
+                  '    "defaults": {' \
+                  '      "models": {' \
+                  '        "ollama/qwen2.5:7b": {' \
+                  '          "alias": "qwen2.57b",' \
+                  '          "streaming": true' \
+                  '        }' \
+                  '      },' \
+                  '      "maxConcurrent": 1,' \
+                  '      "subagents": { "maxConcurrent": 1 }' \
+                  '    }' \
                   '  }' \
                   '}' \
                   > /home/node/.openclaw/openclaw.json
@@ -133,6 +148,8 @@ spec:
           volumeMounts:
             - name: openclaw-config
               mountPath: {{ .Values.openclawConfigPersistence.mountPath | quote }}
+            - name: openclaw-raw-stream
+              mountPath: /tmp/openclaw
           resources:
             {{- toYaml .Values.openclaw.resources | nindent 12 }}
 
