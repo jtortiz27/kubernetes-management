@@ -6,7 +6,7 @@ fullnameOverride: ""
 openclaw:
   image:
     repository: ghcr.io/openclaw/openclaw
-    tag: latest
+    tag: "2026.3.2"
     pullPolicy: IfNotPresent   # local dev: avoid pulling every restart
   containerPort: 18789
   command: ["node"]
@@ -16,12 +16,11 @@ openclaw:
     - "--allow-unconfigured"
     - "--bind=lan"
   env:
-    OPENAI_BASE_URL: "http://localhost:11434/v1"
-    OPENAI_API_KEY: "ollama"
-    OPENAI_MODEL: "qwen2.5:7b"
     GATEWAY_TOKEN: "localdevtoken"
+    OLLAMA_BASE_URL: "http://127.0.0.1:11434"
     OLLAMA_API_KEY: "ollama-local"
     OLLAMA_KEEP_ALIVE: "-1"
+    NODE_OPTIONS: "--dns-result-order=ipv4first"
 
     OTEL_EXPORTER_OTLP_ENDPOINT: "http://localhost:4318"
     OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf"

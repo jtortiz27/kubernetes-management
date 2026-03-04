@@ -6,27 +6,44 @@ fullnameOverride: ""
 openclaw:
   image:
     repository: ghcr.io/openclaw/openclaw
-    tag: latest
+    tag: "2026.3.2"
     pullPolicy: Always
   containerPort: 18789
-  command: [ "node" ]
+  command: [ "/bin/sh","-lc" ]
   args:
-    - "openclaw.mjs"
-    - "gateway"
-    - "--allow-unconfigured"
-    - "--bind=lan"
+      - |
+        echo "Waiting for Ollama /api/tags...";
+        node -e '
+          const u="http://127.0.0.1:11434/api/tags";
+          (async()=> {
+            for(;;){
+              try{
+                const r = await fetch(u);
+                if (r.ok) { console.log("Ollama ready"); process.exit(0); }
+              } catch(e) {}
+              await new Promise(r=>setTimeout(r,500));
+            }
+          })();
+        ';
+        exec node openclaw.mjs gateway --allow-unconfigured --bind=lan
   env:
-    OPENAI_BASE_URL: "http://localhost:11434/v1"
-    OPENAI_API_KEY: "ollama"
-    OPENAI_MODEL: "qwen2.5:7b"
     GATEWAY_TOKEN: "localdevtoken"
+    OLLAMA_BASE_URL: "http://127.0.0.1:11434"
     OLLAMA_API_KEY: "ollama-local"
     OLLAMA_KEEP_ALIVE: "-1"
+    NODE_OPTIONS: "--dns-result-order=ipv4first"
 
     # OTEL exporter env overrides:
     OTEL_EXPORTER_OTLP_ENDPOINT: "http://localhost:4318"
     OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf"
     OTEL_SERVICE_NAME: "openclaw-gateway"
+  resources:
+    requests:
+      cpu: "0.5"
+      memory: "1Gi"
+    limits:
+      cpu: "2"
+      memory: "2Gi"
 
 ollama:
   image:
@@ -35,7 +52,13 @@ ollama:
     pullPolicy: IfNotPresent
   containerPort: 11434
   modelsPath: "/root/.ollama"
-
+  resources:
+    requests:
+      cpu: "2"
+      memory: "8Gi"
+    limits:
+      cpu: "6"
+      memory: "10Gi"
 # Models to pre-pull at pod start
 prepull:
   enabled: true

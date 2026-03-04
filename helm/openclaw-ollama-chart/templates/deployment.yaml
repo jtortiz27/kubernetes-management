@@ -98,12 +98,20 @@ spec:
           env:
             - name: OLLAMA_MODELS
               value: "{{ .Values.ollama.modelsPath }}"
+            - name: OLLAMA_KEEP_ALIVE
+              value: "-1"
+            - name: OLLAMA_NUM_PARALLEL
+              value: "1"
+            - name: OLLAMA_LOAD_TIMEOUT
+              value: "15m"
           ports:
             - name: ollama
               containerPort: {{ .Values.ollama.containerPort }}
           volumeMounts:
             - name: ollama-data
               mountPath: "{{ .Values.ollama.modelsPath }}"
+          resources:
+            {{- toYaml .Values.ollama.resources | nindent 12 }}
 
         - name: openclaw
           image: "{{ .Values.openclaw.image.repository }}:{{ .Values.openclaw.image.tag }}"
@@ -125,6 +133,8 @@ spec:
           volumeMounts:
             - name: openclaw-config
               mountPath: {{ .Values.openclawConfigPersistence.mountPath | quote }}
+          resources:
+            {{- toYaml .Values.openclaw.resources | nindent 12 }}
 
         {{- if .Values.observability.enabled }}
         - name: otel-collector
