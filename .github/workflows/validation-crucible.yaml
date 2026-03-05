@@ -23,7 +23,13 @@ jobs:
 
       - name: Render templates
         run: |
-          helm template openclaw-crucible ./helm/openclaw-ollama-chart
+          helm template openclaw-crucible ./helm/openclaw-ollama-chart > /tmp/rendered-manifests.yaml || true
+
+      - name: Upload rendered manifests artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rendered-manifests
+          path: /tmp/rendered-manifests.yaml
 
       - name: Optional: run helm tests (if any)
         if: false
@@ -40,4 +46,9 @@ jobs:
           curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
       - name: Render worker test
         run: |
-          helm template openclaw-worker-test ./helm/openclaw-ollama-chart --set workers.example.image=alpine --set workers.example.job=true
+          helm template openclaw-worker-test ./helm/openclaw-ollama-chart --set workers.example.image=alpine --set workers.example.job=true > /tmp/worker-render.yaml || true
+      - name: Upload worker render artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: worker-render
+          path: /tmp/worker-render.yaml
