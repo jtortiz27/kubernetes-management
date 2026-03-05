@@ -47,10 +47,10 @@ metadata:
   labels:
     app: {{ include "openclaw-ollama.fullname" . }}-openclaw
 spec:
-  type: {{ .Values.openclawCore.service.type | default "ClusterIP" }}
+  type: {{ default "ClusterIP" (index .Values "openclawCore" "service" "type") }}
   ports:
-    - port: {{ .Values.openclawCore.service.port | default 18789 }}
-      targetPort: {{ .Values.openclawCore.containerPort | default 18789 }}
+    - port: {{ default 18789 (index .Values "openclawCore" "service" "port") }}
+      targetPort: {{ default 18789 (index .Values "openclawCore" "containerPort") }}
       protocol: TCP
       name: http
   selector:
