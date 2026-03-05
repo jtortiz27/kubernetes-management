@@ -16,6 +16,9 @@ openclawCore:
     tag: "2026.3.2"
     pullPolicy: IfNotPresent
   containerPort: 18789
+  service:
+    type: NodePort
+    port: 18789
   env:
     GATEWAY_TOKEN: "localdevtoken"
     HOME: "/home/node"
@@ -44,6 +47,9 @@ ollamaCore:
     tag: "latest"
     pullPolicy: IfNotPresent
   containerPort: 11434
+  service:
+    type: ClusterIP
+    port: 11434
   modelsPath: "/root/.ollama"
   resources:
     requests:
