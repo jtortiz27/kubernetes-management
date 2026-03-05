@@ -1,0 +1,78 @@
+{{- range $name, $cfg := .Values.workers }}
+{{- if $cfg.enabled | default true }}
+{{- if $cfg.job }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "openclaw-ollama.fullname" $ }}-worker-{{ $name }}
+spec:
+  template:
+    spec:
+      containers:
+        - name: worker
+          image: {{ $cfg.image | quote }}
+          env:
+            - name: OPENCLAW_CORE_URL
+              value: {{ default (printf "http://%s-openclaw.%s.svc.cluster.local:%d" (include "openclaw-ollama.fullname" $) $.Release.Namespace $.Values.openclawCore.containerPort) $cfg.env.OPENCLAW_CORE_URL | quote }}
+            - name: OLLAMA_URL
+              value: {{ default (printf "http://%s-ollama.%s.svc.cluster.local:%d" (include "openclaw-ollama.fullname" $) $.Release.Namespace $.Values.ollamaCore.containerPort) $cfg.env.OLLAMA_URL | quote }}
+          resources:
+            {{- with $cfg.resources }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          volumeMounts:
+            {{- if $cfg.workspace.enabled }}
+            - name: workspace
+              mountPath: /workspace
+            {{- end }}
+      restartPolicy: OnFailure
+      volumes:
+        {{- if $cfg.workspace.enabled }}
+        - name: workspace
+          persistentVolumeClaim:
+            claimName: {{ $cfg.workspace.pvc | default (printf "%s-%s-workspace" (include "openclaw-ollama.fullname" $) $name) }}
+        {{- end }}
+  backoffLimit: 2
+---
+{{- else }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "openclaw-ollama.fullname" $ }}-worker-{{ $name }}
+spec:
+  replicas: {{ $cfg.replicas | default 1 }}
+  selector:
+    matchLabels:
+      app: {{ include "openclaw-ollama.fullname" $ }}-worker-{{ $name }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "openclaw-ollama.fullname" $ }}-worker-{{ $name }}
+    spec:
+      containers:
+        - name: worker
+          image: {{ $cfg.image | quote }}
+          env:
+            - name: OPENCLAW_CORE_URL
+              value: {{ default (printf "http://%s-openclaw.%s.svc.cluster.local:%d" (include "openclaw-ollama.fullname" $) $.Release.Namespace $.Values.openclawCore.containerPort) $cfg.env.OPENCLAW_CORE_URL | quote }}
+            - name: OLLAMA_URL
+              value: {{ default (printf "http://%s-ollama.%s.svc.cluster.local:%d" (include "openclaw-ollama.fullname" $) $.Release.Namespace $.Values.ollamaCore.containerPort) $cfg.env.OLLAMA_URL | quote }}
+          resources:
+            {{- with $cfg.resources }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          volumeMounts:
+            {{- if $cfg.workspace.enabled }}
+            - name: workspace
+              mountPath: /workspace
+            {{- end }}
+      volumes:
+        {{- if $cfg.workspace.enabled }}
+        - name: workspace
+          persistentVolumeClaim:
+            claimName: {{ $cfg.workspace.pvc | default (printf "%s-%s-workspace" (include "openclaw-ollama.fullname" $) $name) }}
+        {{- end }}
+---
+{{- end }}
+{{- end }}
+{{- end }}

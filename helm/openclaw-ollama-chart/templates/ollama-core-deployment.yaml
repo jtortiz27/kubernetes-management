@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "openclaw-ollama.fullname" . }}-ollama
+  labels:
+    app: {{ include "openclaw-ollama.fullname" . }}-ollama
+spec:
+  replicas: {{ default 1 .Values.ollamaCore.replicas }}
+  selector:
+    matchLabels:
+      app: {{ include "openclaw-ollama.fullname" . }}-ollama
+  template:
+    metadata:
+      labels:
+        app: {{ include "openclaw-ollama.fullname" . }}-ollama
+    spec:
+      volumes:
+        - name: ollama-data
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ default (printf "%s-ollama" (include "openclaw-ollama.fullname" .)) .Values.persistence.existingClaim }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+      containers:
+        - name: ollama
+          image: "{{ .Values.ollamaCore.image.repository }}:{{ .Values.ollamaCore.image.tag }}"
+          imagePullPolicy: {{ .Values.ollamaCore.image.pullPolicy }}
+          env:
+            - name: OLLAMA_MODELS
+              value: "{{ .Values.ollamaCore.modelsPath }}"
+          ports:
+            - name: ollama
+              containerPort: {{ .Values.ollamaCore.containerPort | default 11434 }}
+          volumeMounts:
+            - name: ollama-data
+              mountPath: "{{ .Values.ollamaCore.modelsPath | default "/root/.ollama" }}"
+          resources:
+            {{- toYaml .Values.ollamaCore.resources | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "openclaw-ollama.fullname" . }}-ollama
+  labels:
+    app: {{ include "openclaw-ollama.fullname" . }}-ollama
+spec:
+  type: {{ .Values.ollamaCore.service.type | default "ClusterIP" }}
+  ports:
+    - port: {{ .Values.ollamaCore.service.port | default 11434 }}
+      targetPort: {{ .Values.ollamaCore.containerPort | default 11434 }}
+      protocol: TCP
+      name: http
+  selector:
+    app: {{ include "openclaw-ollama.fullname" . }}-ollama

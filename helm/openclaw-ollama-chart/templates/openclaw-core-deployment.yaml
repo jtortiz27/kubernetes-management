@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "openclaw-ollama.fullname" . }}-openclaw
+  labels:
+    app: {{ include "openclaw-ollama.fullname" . }}-openclaw
+spec:
+  replicas: {{ default 1 .Values.openclawCore.replicas }}
+  selector:
+    matchLabels:
+      app: {{ include "openclaw-ollama.fullname" . }}-openclaw
+  template:
+    metadata:
+      labels:
+        app: {{ include "openclaw-ollama.fullname" . }}-openclaw
+    spec:
+      containers:
+        - name: openclaw
+          image: "{{ .Values.openclawCore.image.repository }}:{{ .Values.openclawCore.image.tag }}"
+          imagePullPolicy: {{ .Values.openclawCore.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.openclawCore.containerPort | default 18789 }}
+          env:
+            - name: OLLAMA_URL
+              value: "{{ .Values.ollamaCore.serviceUrl | default (printf "http://%s-ollama.%s.svc.cluster.local:%d" (include "openclaw-ollama.fullname" .) .Release.Namespace .Values.ollamaCore.containerPort) }}"
+            - name: GATEWAY_TOKEN
+              value: {{ .Values.openclawCore.env.GATEWAY_TOKEN | quote }}
+          volumeMounts:
+            - name: openclaw-config
+              mountPath: /home/node/.openclaw
+          resources:
+            {{- toYaml .Values.openclawCore.resources | nindent 12 }}
+      volumes:
+        - name: openclaw-config
+          {{- if .Values.openclawConfigPersistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ default (printf "%s-openclaw-config" (include "openclaw-ollama.fullname" .)) .Values.openclawConfigPersistence.existingClaim }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "openclaw-ollama.fullname" . }}-openclaw
+  labels:
+    app: {{ include "openclaw-ollama.fullname" . }}-openclaw
+spec:
+  type: {{ .Values.openclawCore.service.type | default "ClusterIP" }}
+  ports:
+    - port: {{ .Values.openclawCore.service.port | default 18789 }}
+      targetPort: {{ .Values.openclawCore.containerPort | default 18789 }}
+      protocol: TCP
+      name: http
+  selector:
+    app: {{ include "openclaw-ollama.fullname" . }}-openclaw
