@@ -21,6 +21,7 @@ openclaw:
     OLLAMA_API_KEY: "ollama-local"
     OLLAMA_KEEP_ALIVE: "-1"
     NODE_OPTIONS: "--dns-result-order=ipv4first"
+    HOME: "/home/node"
 
     OTEL_EXPORTER_OTLP_ENDPOINT: "http://localhost:4318"
     OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf"

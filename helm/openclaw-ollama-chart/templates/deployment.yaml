@@ -102,6 +102,9 @@ spec:
                   '}' \
                   > /home/node/.openclaw/openclaw.json
               fi
+          env:
+            - name: HOME
+              value: /home/node
           volumeMounts:
             - name: openclaw-config
               mountPath: /home/node/.openclaw
@@ -152,6 +155,10 @@ spec:
               mountPath: /tmp/openclaw
           resources:
             {{- toYaml .Values.openclaw.resources | nindent 12 }}
+          securityContext:
+            runAsUser: 0
+            runAsGroup: 0
+            allowPrivilegeEscalation: true
 
         {{- if .Values.observability.enabled }}
         - name: otel-collector
