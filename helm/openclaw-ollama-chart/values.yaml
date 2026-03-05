@@ -73,7 +73,7 @@ prepull:
     - "qwen2.5:7b"
 
 service:
-  type: ClusterIP
+  type: NodePort
   port: 18789
   nodePort: 31889
 
