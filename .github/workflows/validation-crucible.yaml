@@ -72,7 +72,7 @@ jobs:
             /tmp/rendered-manifests.yaml
 
       - name: Optional: run helm tests (if any)
-        if: false
+        if: ${{ false }}
         run: |
           echo "No tests configured"
 
