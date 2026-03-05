@@ -1,0 +1,56 @@
+# values-migration.yaml
+# Reuse existing PVCs and preserve OpenClaw env/config from existing deployment
+
+persistence:
+  existingClaim: "openclaw-ollama-ollama"
+
+openclawConfigPersistence:
+  existingClaim: "openclaw-ollama-openclaw-config"
+
+service:
+  type: NodePort
+
+openclawCore:
+  image:
+    repository: ghcr.io/openclaw/openclaw
+    tag: "2026.3.2"
+    pullPolicy: IfNotPresent
+  containerPort: 18789
+  env:
+    GATEWAY_TOKEN: "localdevtoken"
+    HOME: "/home/node"
+    NODE_OPTIONS: "--dns-result-order=ipv4first"
+    OLLAMA_API_KEY: "ollama-local"
+    OLLAMA_BASE_URL: "http://127.0.0.1:11434"
+    OLLAMA_KEEP_ALIVE: "-1"
+    OTEL_EXPORTER_OTLP_ENDPOINT: "http://localhost:4318"
+    OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf"
+    OTEL_SERVICE_NAME: "openclaw-gateway"
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "2"
+      memory: "2Gi"
+  securityContext:
+    runAsUser: 0
+    runAsGroup: 0
+    allowPrivilegeEscalation: true
+
+ollamaCore:
+  image:
+    repository: ollama/ollama
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  containerPort: 11434
+  modelsPath: "/root/.ollama"
+  resources:
+    requests:
+      cpu: "2"
+      memory: "6Gi"
+    limits:
+      cpu: "6"
+      memory: "10Gi"
+
+workers: {}
