@@ -1,0 +1,41 @@
+name: Validation Crucible
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  helm-validate:
+    name: Helm chart validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v1
+
+      - name: Helm lint
+        working-directory: ./helm/openclaw-ollama-chart
+        run: |
+          helm lint .
+
+      - name: Render templates
+        run: |
+          helm template openclaw-crucible ./helm/openclaw-ollama-chart
+
+      - name: Optional: run helm tests (if any)
+        if: false
+        run: |
+          echo "No tests configured"
+
+  quick-worker-render:
+    name: Worker template smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Helm
+        uses: azure/setup-helm@v1
+      - name: Render worker test
+        run: |
+          helm template openclaw-worker-test ./helm/openclaw-ollama-chart --set workers.example.image=alpine --set workers.example.job=true
