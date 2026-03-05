@@ -9,12 +9,12 @@ jobs:
     name: Runner smoke test
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: "Checkout"
         uses: actions/checkout@v4
-      - name: Write smoke file
+      - name: "Write smoke file"
         run: |
           echo "smoke ok" > /tmp/smoke.txt || true
-      - name: Upload smoke
+      - name: "Upload smoke"
         uses: actions/upload-artifact@v4
         with:
           name: smoke
@@ -26,10 +26,10 @@ jobs:
     needs: smoke
     steps:
       - uses: actions/checkout@v4
-      - name: Environment info
+      - name: "Environment info"
         run: |
           bash -lc 'set -x; uname -a > /tmp/diag.txt 2>&1 || true; id >> /tmp/diag.txt 2>&1 || true; echo PATH=$PATH >> /tmp/diag.txt 2>&1 || true; env >> /tmp/diag.txt 2>&1 || true; df -h >> /tmp/diag.txt 2>&1 || true; curl --version >> /tmp/diag.txt 2>&1 || true; curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | sed -n "1,80p" > /tmp/helm-get-head.sh 2>&1 || true'
-      - name: Upload diagnostic artifact
+      - name: "Upload diagnostic artifact"
         uses: actions/upload-artifact@v4
         with:
           name: diagnostic
@@ -42,26 +42,26 @@ jobs:
     runs-on: ubuntu-latest
     needs: diagnostic
     steps:
-      - name: Checkout
+      - name: "Checkout"
         uses: actions/checkout@v4
 
-      - name: Install Helm (script)
+      - name: "Install Helm (script)"
         run: |
           set -x
           (curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash) > /tmp/helm-install.log 2>&1 || true
           helm version > /tmp/helm-version.log 2>&1 || true
 
-      - name: Helm lint
+      - name: "Helm lint"
         run: |
           set -x
           cd helm/openclaw-ollama-chart
           helm lint . > /tmp/helm-lint.log 2>&1 || true
 
-      - name: Render templates
+      - name: "Render templates"
         run: |
           helm template openclaw-crucible ./helm/openclaw-ollama-chart > /tmp/rendered-manifests.yaml 2>&1 || true
 
-      - name: Upload rendered manifests artifact
+      - name: "Upload rendered manifests artifact"
         uses: actions/upload-artifact@v4
         with:
           name: rendered-manifests
@@ -71,7 +71,7 @@ jobs:
             /tmp/helm-lint.log
             /tmp/rendered-manifests.yaml
 
-      - name: Optional: run helm tests (if any)
+      - name: "Optional: run helm tests (if any)"
         if: ${{ false }}
         run: |
           echo "No tests configured"
@@ -82,13 +82,13 @@ jobs:
     needs: diagnostic
     steps:
       - uses: actions/checkout@v4
-      - name: Install Helm (script)
+      - name: "Install Helm (script)"
         run: |
           (curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash) > /tmp/helm-install-worker.log 2>&1 || true
-      - name: Render worker test
+      - name: "Render worker test"
         run: |
           helm template openclaw-worker-test ./helm/openclaw-ollama-chart --set workers.example.image=alpine --set workers.example.job=true > /tmp/worker-render.yaml 2>&1 || true
-      - name: Upload worker render artifact
+      - name: "Upload worker render artifact"
         uses: actions/upload-artifact@v4
         with:
           name: worker-render
