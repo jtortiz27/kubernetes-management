@@ -16,8 +16,8 @@ jobs:
         uses: azure/setup-helm@v1
 
       - name: Helm lint
-        working-directory: ./helm/openclaw-ollama-chart
         run: |
+          cd helm/openclaw-ollama-chart
           helm lint .
 
       - name: Render templates
