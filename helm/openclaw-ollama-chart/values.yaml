@@ -120,3 +120,38 @@ metrics:
   enabled: true
   path: /metrics
   port: 9464
+
+# Core-specific overrides for the separated deployments
+openclawCore:
+  image:
+    repository: ghcr.io/openclaw/openclaw
+    tag: "2026.3.2"
+    pullPolicy: Always
+  containerPort: 18789
+  env:
+    GATEWAY_TOKEN: "localdevtoken"
+  resources:
+    requests:
+      cpu: "0.5"
+      memory: "1Gi"
+    limits:
+      cpu: "2"
+      memory: "2Gi"
+
+ollamaCore:
+  image:
+    repository: ollama/ollama
+    tag: latest
+    pullPolicy: IfNotPresent
+  containerPort: 11434
+  modelsPath: "/root/.ollama"
+  resources:
+    requests:
+      cpu: "2"
+      memory: "8Gi"
+    limits:
+      cpu: "6"
+      memory: "10Gi"
+
+# Worker definitions: render a worker per entry
+workers: {}
