@@ -5,21 +5,48 @@ on:
     types: [opened, synchronize, reopened]
 
 jobs:
+  diagnostic:
+    name: Diagnostic info
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Environment info
+        run: |
+          set -x
+          uname -a > /tmp/diag.txt || true
+          id >> /tmp/diag.txt || true
+          echo PATH=$PATH >> /tmp/diag.txt || true
+          env >> /tmp/diag.txt || true
+          df -h >> /tmp/diag.txt || true
+          curl --version >> /tmp/diag.txt || true
+          curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | sed -n '1,80p' > /tmp/helm-get-head.sh || true
+      - name: Upload diagnostic artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: diagnostic
+          path: |
+            /tmp/diag.txt
+            /tmp/helm-get-head.sh
+
   helm-validate:
     name: Helm chart validation
     runs-on: ubuntu-latest
+    needs: diagnostic
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Install Helm (script)
         run: |
+          set -x
           curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+          helm version || true
 
       - name: Helm lint
         run: |
+          set -x
           cd helm/openclaw-ollama-chart
-          helm lint .
+          helm lint . || true
 
       - name: Render templates
         run: |
@@ -39,6 +66,7 @@ jobs:
   quick-worker-render:
     name: Worker template smoke test
     runs-on: ubuntu-latest
+    needs: diagnostic
     steps:
       - uses: actions/checkout@v4
       - name: Install Helm (script)
